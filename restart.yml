@@ -1,0 +1,34 @@
+---
+- name: Restart Tomcat if new WAR file detected and check process status
+  hosts: tomcat_servers
+  become: true
+  vars:
+    war_file_path: /mnt/apache-tomcat-8.5.70/webapps/sample.war
+
+  tasks:
+    - name: Check if WAR file is changed
+      stat:
+        path: "{{ war_file_path }}"
+      register: war_file_stat
+
+    - name: Restart Tomcat service if WAR file changed
+      service:
+        name: tomcat
+        state: restarted
+      when: war_file_stat.changed
+
+    - name: Check if Tomcat process is running
+      ansible.builtin.command: ps aux | grep '[t]omcat'
+      register: tomcat_process_status
+
+    - name: Print status of Tomcat process
+      debug:
+        msg: "Tomcat is {{ 'running' if tomcat_process_status.stdout else 'not running' }}"
+
+    - name: Get top 10 running processes
+      ansible.builtin.shell: ps aux --sort=-%cpu | head -n 11
+      register: top_processes
+
+    - name: Print top 10 processes
+      debug:
+        msg: "{{ top_processes.stdout_lines }}"
