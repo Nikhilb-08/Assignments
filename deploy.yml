@@ -1,0 +1,70 @@
+---
+- name: Install and configure MySQL, Tomcat, Memcached, Redis, and deploy sample WAR file
+  hosts: devlinux
+  connection: ssh
+  become: true
+  gather_fact: yes
+  vars:
+    war_file_path: /mnt/sample.war
+  tasks:
+    - name: Update package cache and install MySQL
+      yum:
+        name: mysql-server
+        state: present
+
+    - name: Start MySQL service
+      service:
+        name: mysqld
+        state: started
+
+    - name: Install Java
+      yum:
+        name: java-1.8.0-openjdk
+        state: present
+
+    - name: Download and install Tomcat
+      get_url:
+        url: https://archive.apache.org/dist/tomcat/tomcat-8/v8.5.70/bin/apache-tomcat-8.5.70.tar.gz
+        dest: /mnt/server/apache-tomcat.tar.gz
+
+    - name: Extract Tomcat archive
+      ansible.builtin.unarchive:
+        src: /server/apache-tomcat.tar.gz
+        dest: /mnt
+        remote_src: true
+
+    - name: Set Tomcat permissions
+      ansible.builtin.file:
+        path: /mnt/server/apache-tomcat-8.5.70/bin/*.sh
+        mode: '766'
+
+    - name: Install Memcached
+      yum:
+        name: memcached
+        state: present
+
+    - name: Start Memcached service
+      service:
+        name: memcached
+        state: started
+
+    - name: Install Redis
+      yum:
+        name: redis
+        state: present
+
+    - name: Start Redis service
+      service:
+        name: redis
+        state: started
+
+    - name: Deploy sample WAR file to Tomcat webapps directory
+      copy:
+        src: "{{ war_file_path }}"
+        dest: /mnt/apache-tomcat-8.5.70/webapps/sample.war
+
+    - name: Restart Tomcat to deploy WAR file
+      service:
+        name: tomcat
+        state: restarted
+
